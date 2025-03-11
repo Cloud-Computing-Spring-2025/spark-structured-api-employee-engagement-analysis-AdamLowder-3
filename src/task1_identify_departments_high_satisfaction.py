@@ -45,7 +45,22 @@ def identify_departments_high_satisfaction(df):
     # 3. Identify departments where this percentage exceeds 50%.
     # 4. Return the result DataFrame.
 
-    pass  # Remove this line after implementing the function
+    # import necessary spark functions
+    from pyspark.sql.functions import col, count, when, round as spark_round
+    # filter employees with satisfaction > 4 and engagement = high
+    highSatDataFrame = df.filter((col("SatisfactionRating") > 4) & (col("EngagementLevel") == "High"))
+    # get total emplyees from each department
+    countDataFrame = df.groupBy("Department").agg(count("*").alias("TotalEmployees"))
+    # get high satisfaction employees per department
+    highSatCountDataFrame = highSatDataFrame.groupBy("Department").agg(count("*").alias("HighSatisfactionEmployees"))
+    # join the total count and high satisfaction count data frames
+    resultDataFrame = highSatCountDataFrame.join(countDataFrame, "Department")
+    # calculate the percentage of high satisfaction employees
+    resultDataFrame = resultDataFrame.withColumn("Percentage", spark_round((col("HighSatisfactionEmployees") / col("TotalEmployees")) * 100, 2))
+    # filter departments where the percentage exceeds 50%
+    resultDataFrame = resultDataFrame.filter(col("Percentage") > 50).select("Department", "Percentage")
+
+    return resultDataFrame
 
 def write_output(result_df, output_path):
     """
